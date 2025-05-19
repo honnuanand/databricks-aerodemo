@@ -85,29 +85,47 @@ def enriched_sensor_data():
 
     return final_df
 
-# 5. Feature engineering
 @dlt.table(
-    comment="Engineered sensor features for ML model input"
+    comment="Engineered sensor features for ML model input",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.constraints.primaryKey": "aircraft_id timestamp"
+    }
 )
 def sensor_features():
     df = dlt.read("enriched_sensor_data").withColumn("date", to_date("timestamp"))
 
+    # Cast anomaly_score to int (safely)
+    df = df.withColumn("anomaly_score", col("anomaly_score").cast("int"))
+
     rolling = Window.partitionBy("aircraft_id").orderBy("date").rowsBetween(-6, 0)
     lag_window = Window.partitionBy("aircraft_id").orderBy("date")
 
-    return (
-        df.withColumn("avg_engine_temp_7d", avg("engine_temp").over(rolling))
-          .withColumn("avg_vibration_7d", avg("vibration").over(rolling))
-          .withColumn("avg_rpm_7d", avg("engine_rpm").over(rolling))
-          .withColumn("prev_anomaly", lag("anomaly_score", 1).over(lag_window))
-          .withColumn("days_since_maint", datediff("date", F.coalesce(col("maint_date"), F.lit("1970-01-01"))))
-          .select(
-              "timestamp", "aircraft_id", "model", "engine_temp", "fuel_efficiency", "vibration",
-              "altitude", "airspeed", "oil_pressure", "engine_rpm", "battery_voltage",
-              "anomaly_score", "event_type", "avg_engine_temp_7d", "avg_vibration_7d",
-              "avg_rpm_7d", "prev_anomaly", "days_since_maint",
-              "manufacturer", "engine_type", "capacity", "range_km"
-          )
+    df = (
+        df.withColumn("engine_rpm", col("engine_rpm").cast("int"))
+          .withColumn("prev_anomaly", lag("anomaly_score", 1).over(lag_window).cast("double"))
+          .withColumn("avg_engine_temp_7d", avg("engine_temp").over(rolling).cast("double"))
+          .withColumn("avg_vibration_7d", avg("vibration").over(rolling).cast("double"))
+          .withColumn("avg_rpm_7d", avg("engine_rpm").over(rolling).cast("double"))
+          .withColumn("days_since_maint", datediff("date", F.coalesce(col("maint_date"), F.lit("1970-01-01"))).cast("int"))
+    )
+
+    return df.select(
+        "timestamp", "aircraft_id", "model", 
+        col("engine_temp").cast("double"),
+        col("fuel_efficiency").cast("double"),
+        col("vibration").cast("double"),
+        col("altitude").cast("double"),
+        col("airspeed").cast("double"),
+        col("oil_pressure").cast("double"),
+        "engine_rpm", 
+        col("battery_voltage").cast("double"),
+        "anomaly_score", "event_type", 
+        "avg_engine_temp_7d", "avg_vibration_7d", "avg_rpm_7d", 
+        "prev_anomaly", "days_since_maint",
+        "manufacturer", "engine_type", 
+        col("capacity").cast("int"), 
+        col("range_km").cast("int")
     )
 
 # 6. Risk prediction logic (simulated model)
@@ -116,10 +134,11 @@ def sensor_features():
 )
 def prediction_results():
     df = dlt.read("sensor_features")
-    return (
-        df.withColumn(
-            "predicted_anomaly",
-            ((col("avg_engine_temp_7d") / 700 + col("avg_vibration_7d") / 25) * 0.5 +
-             col("prev_anomaly") * 0.3 + (col("days_since_maint") / 100.0) * 0.2 > 0.5).cast("int")
-        )
+    return df.withColumn(
+        "predicted_anomaly",
+        (
+            ((col("avg_engine_temp_7d") / 700 + col("avg_vibration_7d") / 25) * 0.5) +
+            (col("prev_anomaly") * 0.3) +
+            ((col("days_since_maint") / 100.0) * 0.2)
+        > 0.5).cast("int")
     )
