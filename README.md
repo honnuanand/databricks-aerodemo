@@ -126,5 +126,31 @@ databricks-aerodemo/
 ```
 
 ---
+%md
+### 📊 DLT Pipeline Data Flow
+
+```mermaid
+graph TD
+    A[raw_sensor_data (Stream Ingest)] --> B[cleaned_sensor_data]
+    B --> C[enriched_sensor_data]
+    C --> D[sensor_features]
+    D --> E[prediction_results]
+    E --> F[digital_twin_engine_view]
+    F --> G[digital_twin_aircraft_view]
+
+    subgraph Static_Refs
+        H[maintenance_events (Stream Ingest)]
+        I[aircraft_model_reference_dlt]
+        J[airport_location_reference]
+        K[aircraft_location_reference]
+    end
+
+    H --> C
+    I --> C
+    J --> L[aircraft_location_enriched]
+    K --> L
+
+    E --> M[post_dlt_sanity_check]
+---
 
 ## 🛫 Let’s Build the Future of Aviation Analytics with Databricks!
