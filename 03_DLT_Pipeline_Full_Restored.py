@@ -298,6 +298,27 @@ def aircraft_location_enriched():
     )
 
 
+# ✅ Step 12: Aircraft Status Map View with Alert Count
+# Combines aircraft geolocation, current engine health, and alert count for geospatial dashboards
+
+
+@dlt.table(
+    comment="Aircraft geolocation with engine health status and number of anomaly alerts for geospatial visualization"
+)
+def aircraft_status_map_view():
+    loc = dlt.read("aircraft_location_enriched")
+    twin = dlt.read("digital_twin_engine_view")
+    alerts = spark.read.table("arao.aerodemo.anomaly_alerts")  # this is a non-DLT table
+
+    return (
+        loc
+        .join(twin, on="aircraft_id", how="left")
+        .join(alerts, on="aircraft_id", how="left")
+        .groupBy("aircraft_id", "latitude", "longitude", "engine_health_status")
+        .agg(F.count(alerts["aircraft_id"]).alias("alert_count"))
+    )
+
+
 # Sanity Check 
 # ✅ Clean Steps Included:
 # 	1.	Null checks on key columns
