@@ -1,0 +1,669 @@
+{
+  "datasets" : [ {
+    "name" : "bdf6501b",
+    "displayName" : "Digital Twin Engine Dataset",
+    "query" : "SELECT\n  aircraft_id,\n  timestamp,\n  engine_temp,\n  vibration,\n  engine_rpm,\n  engine_health_status\nFROM arao.aerodemo.digital_twin_engine_view\nWHERE (\n  :aircraft_id IS NULL OR\n  :aircraft_id = 'NULL' OR\n  aircraft_id = :aircraft_id\n)",
+    "parameters" : [ {
+      "displayName" : "aircraft_id",
+      "keyword" : "aircraft_id",
+      "dataType" : "STRING",
+      "defaultSelection" : {
+        "values" : {
+          "dataType" : "STRING",
+          "values" : [ {
+            "value" : "NULL"
+          } ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "a08b619a",
+    "displayName" : "Alerts Per Day",
+    "query" : "SELECT \n  aircraft_id,\n  alert_day,\n  COUNT(*) AS alert_count\nFROM arao.aerodemo.anomaly_alerts\nWHERE \n  (:aircraft_id IS NULL OR :aircraft_id = 'NULL' OR aircraft_id = :aircraft_id)\n  AND (:start_date IS NULL OR alert_day >= :start_date)\n  AND (:end_date IS NULL OR alert_day <= :end_date)\nGROUP BY aircraft_id, alert_day\nORDER BY alert_day ASC",
+    "parameters" : [ {
+      "displayName" : "aircraft_id",
+      "keyword" : "aircraft_id",
+      "dataType" : "STRING",
+      "defaultSelection" : {
+        "values" : {
+          "dataType" : "STRING",
+          "values" : [ {
+            "value" : "NULL"
+          } ]
+        }
+      }
+    }, {
+      "displayName" : "start_date",
+      "keyword" : "start_date",
+      "dataType" : "DATE",
+      "defaultSelection" : {
+        "values" : {
+          "dataType" : "DATE",
+          "values" : [ {
+            "value" : "2024-04-01T00:00:00.000"
+          } ]
+        }
+      }
+    }, {
+      "displayName" : "end_date",
+      "keyword" : "end_date",
+      "dataType" : "DATE",
+      "defaultSelection" : {
+        "values" : {
+          "dataType" : "DATE",
+          "values" : [ {
+            "value" : "2025-05-22T00:00:00.000"
+          } ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "572c1430",
+    "displayName" : "Aircraft IDs",
+    "query" : "SELECT DISTINCT aircraft_id\nFROM arao.aerodemo.digital_twin_aircraft_view\nORDER BY aircraft_id"
+  }, {
+    "name" : "f7cb50f5",
+    "displayName" : "Engine Health Distribution",
+    "query" : "SELECT \n  engine_health_status AS category, \n  COUNT(*) AS count\nFROM arao.aerodemo.digital_twin_engine_view\nWHERE (:aircraft_id IS NULL OR :aircraft_id = 'NULL' OR aircraft_id = :aircraft_id)\nGROUP BY engine_health_status\nORDER BY category",
+    "parameters" : [ {
+      "displayName" : "aircraft_id",
+      "keyword" : "aircraft_id",
+      "dataType" : "STRING",
+      "defaultSelection" : {
+        "values" : {
+          "dataType" : "STRING",
+          "values" : [ {
+            "value" : "NULL"
+          } ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "76a9342b",
+    "displayName" : "Aircraft Temperature Distribution",
+    "query" : "SELECT\n  CONCAT(FLOOR(engine_temp / 10) * 10, '-', FLOOR(engine_temp / 10) * 10 + 10) AS temp_bin,\n  COUNT(*) AS count\nFROM arao.aerodemo.digital_twin_engine_view\nWHERE (\n  :aircraft_id IS NULL OR\n  :aircraft_id = 'NULL' OR\n  aircraft_id = :aircraft_id\n)\nGROUP BY temp_bin\nORDER BY CAST(SPLIT(temp_bin, '-')[0] AS INT)",
+    "parameters" : [ {
+      "displayName" : "aircraft_id",
+      "keyword" : "aircraft_id",
+      "dataType" : "STRING",
+      "defaultSelection" : {
+        "values" : {
+          "dataType" : "STRING",
+          "values" : [ {
+            "value" : "NULL"
+          } ]
+        }
+      }
+    } ]
+  }, {
+    "name" : "8a4e712b",
+    "displayName" : "Aircraft Status Map View",
+    "query" : "SELECT \n  aircraft_id AS `Aircraft`,\n  engine_health_status AS `Engine Health`,\n  alert_count AS `# Alerts`,\n  latitude,\n  longitude\nFROM arao.aerodemo.aircraft_status_map_view\n"
+  } ],
+  "pages" : [ {
+    "name" : "ed9bb82e",
+    "displayName" : "Aircraft Digital Twin Health",
+    "layout" : [ {
+      "widget" : {
+        "name" : "b654a71c",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "f7cb50f5",
+            "fields" : [ {
+              "name" : "sum(count)",
+              "expression" : "SUM(`count`)"
+            }, {
+              "name" : "count",
+              "expression" : "`count`"
+            }, {
+              "name" : "category",
+              "expression" : "`category`"
+            } ],
+            "parameterValues" : [ {
+              "keyword" : "aircraft_id",
+              "selection" : { }
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "pie",
+          "encodings" : {
+            "angle" : {
+              "fieldName" : "sum(count)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "axis" : {
+                "title" : "Category"
+              },
+              "displayName" : "Category"
+            },
+            "color" : {
+              "fieldName" : "count",
+              "scale" : {
+                "type" : "quantitative",
+                "colorRamp" : {
+                  "mode" : "scheme",
+                  "scheme" : "blues"
+                }
+              },
+              "displayName" : "Count"
+            },
+            "label" : {
+              "show" : true
+            },
+            "extra" : [ {
+              "fieldName" : "sum(count)",
+              "displayName" : "Sum of count"
+            }, {
+              "fieldName" : "category",
+              "displayName" : "Category"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "showDescription" : false,
+            "title" : "Engine Health Distribution"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 3,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "10951f98",
+        "queries" : [ {
+          "name" : "dashboards/01f034f0e1191641a03612a4279efd9c/datasets/01f034f2b5471b9db99e57405a056c1f_aircraft_id",
+          "query" : {
+            "datasetName" : "572c1430",
+            "fields" : [ {
+              "name" : "aircraft_id",
+              "expression" : "`aircraft_id`"
+            }, {
+              "name" : "aircraft_id_associativity",
+              "expression" : "COUNT_IF(`associative_filter_predicate_group`)"
+            } ],
+            "disaggregated" : false
+          }
+        }, {
+          "name" : "parameter_dashboards/01f034f0e1191641a03612a4279efd9c/datasets/01f034f4b1b41cc8971d8bb5d092f37c_aircraft_id",
+          "query" : {
+            "datasetName" : "f7cb50f5",
+            "parameters" : [ {
+              "name" : "aircraft_id",
+              "keyword" : "aircraft_id"
+            } ],
+            "disaggregated" : false
+          }
+        }, {
+          "name" : "parameter_dashboards/01f034f0e1191641a03612a4279efd9c/datasets/01f034f14d6a11e59fb6fee673a7ba68_aircraft_id",
+          "query" : {
+            "datasetName" : "a08b619a",
+            "parameters" : [ {
+              "name" : "aircraft_id",
+              "keyword" : "aircraft_id"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-single-select",
+          "encodings" : {
+            "fields" : [ {
+              "fieldName" : "aircraft_id",
+              "displayName" : "aircraft_id",
+              "queryName" : "dashboards/01f034f0e1191641a03612a4279efd9c/datasets/01f034f2b5471b9db99e57405a056c1f_aircraft_id"
+            }, {
+              "parameterName" : "aircraft_id",
+              "queryName" : "parameter_dashboards/01f034f0e1191641a03612a4279efd9c/datasets/01f034f4b1b41cc8971d8bb5d092f37c_aircraft_id"
+            }, {
+              "parameterName" : "aircraft_id",
+              "queryName" : "parameter_dashboards/01f034f0e1191641a03612a4279efd9c/datasets/01f034f14d6a11e59fb6fee673a7ba68_aircraft_id"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Aircraft Identifier"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "2c576f47",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a08b619a",
+            "fields" : [ {
+              "name" : "sum(alert_count)",
+              "expression" : "SUM(`alert_count`)"
+            }, {
+              "name" : "monthly(alert_day)",
+              "expression" : "DATE_TRUNC(\"MONTH\", `alert_day`)"
+            }, {
+              "name" : "daily(alert_day)",
+              "expression" : "DATE_TRUNC(\"DAY\", `alert_day`)"
+            } ],
+            "filters" : [ {
+              "expression" : "`aircraft_id` IN (`aircraft_id`) OR TRUE"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "line",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "daily(alert_day)",
+              "scale" : {
+                "type" : "temporal"
+              },
+              "axis" : {
+                "title" : "Alert Date"
+              },
+              "displayName" : "Alert Date"
+            },
+            "y" : {
+              "fieldName" : "sum(alert_count)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "axis" : {
+                "title" : "Number of Alerts"
+              },
+              "displayName" : "Number of Alerts"
+            },
+            "label" : {
+              "show" : true
+            },
+            "extra" : [ {
+              "fieldName" : "sum(alert_count)",
+              "displayName" : "Sum of alert_count"
+            }, {
+              "fieldName" : "monthly(alert_day)",
+              "displayName" : "alert_day"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Alerts Per Day"
+          }
+        }
+      },
+      "position" : {
+        "x" : 3,
+        "y" : 1,
+        "width" : 3,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "34cf441f",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "a08b619a",
+            "fields" : [ {
+              "name" : "aircraft_id",
+              "expression" : "`aircraft_id`"
+            }, {
+              "name" : "alert_day",
+              "expression" : "`alert_day`"
+            }, {
+              "name" : "alert_count",
+              "expression" : "`alert_count`"
+            } ],
+            "filters" : [ {
+              "expression" : "`aircraft_id` IN (`aircraft_id`) OR TRUE"
+            } ],
+            "disaggregated" : true
+          }
+        } ],
+        "spec" : {
+          "version" : 1,
+          "widgetType" : "table",
+          "encodings" : {
+            "columns" : [ {
+              "fieldName" : "aircraft_id",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "string",
+              "displayAs" : "string",
+              "visible" : true,
+              "order" : 100000,
+              "title" : "Aircraft",
+              "allowSearch" : true,
+              "alignContent" : "left",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "description" : "Aircraft ID",
+              "displayName" : "aircraft_id"
+            }, {
+              "fieldName" : "alert_day",
+              "dateTimeFormat" : "YYYY-MM-DD",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "date",
+              "displayAs" : "datetime",
+              "visible" : true,
+              "order" : 100001,
+              "title" : "Alert Date",
+              "allowSearch" : true,
+              "alignContent" : "right",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "displayName" : "alert_day"
+            }, {
+              "fieldName" : "alert_count",
+              "numberFormat" : "0",
+              "booleanValues" : [ "false", "true" ],
+              "imageUrlTemplate" : "{{ @ }}",
+              "imageTitleTemplate" : "{{ @ }}",
+              "imageWidth" : "",
+              "imageHeight" : "",
+              "linkUrlTemplate" : "{{ @ }}",
+              "linkTextTemplate" : "{{ @ }}",
+              "linkTitleTemplate" : "{{ @ }}",
+              "linkOpenInNewTab" : true,
+              "type" : "integer",
+              "displayAs" : "number",
+              "visible" : true,
+              "order" : 100002,
+              "title" : "# Alerts",
+              "allowSearch" : false,
+              "alignContent" : "right",
+              "allowHTML" : false,
+              "highlightLinks" : false,
+              "useMonospaceFont" : false,
+              "preserveWhitespace" : false,
+              "description" : "Number of Alerts",
+              "displayName" : "alert_count"
+            } ]
+          },
+          "invisibleColumns" : [ ],
+          "allowHTMLByDefault" : false,
+          "itemsPerPage" : 25,
+          "paginationSize" : "default",
+          "condensed" : true,
+          "withRowNumber" : false,
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Aircraft Status Snapshot"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 7,
+        "width" : 3,
+        "height" : 6
+      }
+    }, {
+      "widget" : {
+        "name" : "ac04fb91",
+        "queries" : [ {
+          "name" : "parameter_dashboards/01f034ffcece120faf01470dcb4b0f81/datasets/01f034ffcece1ceb86feb1dc6e590c80_start_date",
+          "query" : {
+            "datasetName" : "a08b619a",
+            "parameters" : [ {
+              "name" : "start_date",
+              "keyword" : "start_date"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-date-picker",
+          "encodings" : {
+            "fields" : [ {
+              "parameterName" : "start_date",
+              "queryName" : "parameter_dashboards/01f034ffcece120faf01470dcb4b0f81/datasets/01f034ffcece1ceb86feb1dc6e590c80_start_date"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Start Date"
+          }
+        }
+      },
+      "position" : {
+        "x" : 2,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "eb45eed8",
+        "queries" : [ {
+          "name" : "parameter_dashboards/01f034ffcece120faf01470dcb4b0f81/datasets/01f034ffcece1ceb86feb1dc6e590c80_end_date",
+          "query" : {
+            "datasetName" : "a08b619a",
+            "parameters" : [ {
+              "name" : "end_date",
+              "keyword" : "end_date"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "filter-date-picker",
+          "encodings" : {
+            "fields" : [ {
+              "parameterName" : "end_date",
+              "queryName" : "parameter_dashboards/01f034ffcece120faf01470dcb4b0f81/datasets/01f034ffcece1ceb86feb1dc6e590c80_end_date"
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "End Date"
+          }
+        }
+      },
+      "position" : {
+        "x" : 4,
+        "y" : 0,
+        "width" : 2,
+        "height" : 1
+      }
+    }, {
+      "widget" : {
+        "name" : "199b2a95",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "76a9342b",
+            "fields" : [ {
+              "name" : "temp_bin",
+              "expression" : "`temp_bin`"
+            }, {
+              "name" : "sum(count)",
+              "expression" : "SUM(`count`)"
+            } ],
+            "disaggregated" : false
+          }
+        } ],
+        "spec" : {
+          "version" : 3,
+          "widgetType" : "bar",
+          "encodings" : {
+            "x" : {
+              "fieldName" : "temp_bin",
+              "scale" : {
+                "type" : "categorical"
+              },
+              "axis" : {
+                "title" : "Engine Temp Range (°C)"
+              },
+              "displayName" : "Engine Temp Range (°C)"
+            },
+            "y" : {
+              "fieldName" : "sum(count)",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "axis" : {
+                "title" : "Number of Aircraft"
+              },
+              "displayName" : "Number of Aircraft"
+            }
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Engine Temperature Distribution Across Aircraft"
+          }
+        }
+      },
+      "position" : {
+        "x" : 3,
+        "y" : 7,
+        "width" : 3,
+        "height" : 6
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_CANVAS"
+  }, {
+    "name" : "a30e0016",
+    "displayName" : "Aircraft Status on a Map",
+    "layout" : [ {
+      "widget" : {
+        "name" : "16768511",
+        "queries" : [ {
+          "name" : "main_query",
+          "query" : {
+            "datasetName" : "8a4e712b",
+            "fields" : [ {
+              "name" : "latitude",
+              "expression" : "`latitude`"
+            }, {
+              "name" : "longitude",
+              "expression" : "`longitude`"
+            }, {
+              "name" : "Aircraft",
+              "expression" : "`Aircraft`"
+            }, {
+              "name" : "Engine Health",
+              "expression" : "`Engine Health`"
+            }, {
+              "name" : "# Alerts",
+              "expression" : "`# Alerts`"
+            } ],
+            "disaggregated" : true
+          }
+        } ],
+        "spec" : {
+          "version" : 2,
+          "widgetType" : "symbol-map",
+          "encodings" : {
+            "coordinates" : {
+              "latitude" : {
+                "fieldName" : "latitude",
+                "displayName" : "latitude"
+              },
+              "longitude" : {
+                "fieldName" : "longitude",
+                "displayName" : "longitude"
+              }
+            },
+            "size" : {
+              "fieldName" : "# Alerts",
+              "scale" : {
+                "type" : "quantitative"
+              },
+              "displayName" : "# Alerts"
+            },
+            "extra" : [ {
+              "fieldName" : "Aircraft",
+              "displayName" : "Aircraft"
+            }, {
+              "fieldName" : "Engine Health",
+              "displayName" : "Engine Health"
+            }, {
+              "fieldName" : "# Alerts",
+              "displayName" : "# Alerts"
+            } ]
+          },
+          "mark" : {
+            "colors" : [ {
+              "themeColorType" : "visualizationColors",
+              "position" : 4
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 2
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 3
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 4
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 5
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 6
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 7
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 8
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 9
+            }, {
+              "themeColorType" : "visualizationColors",
+              "position" : 10
+            } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Real-Time Aircraft Risk Distribution"
+          }
+        }
+      },
+      "position" : {
+        "x" : 0,
+        "y" : 0,
+        "width" : 6,
+        "height" : 17
+      }
+    } ],
+    "pageType" : "PAGE_TYPE_CANVAS"
+  } ]
+}
