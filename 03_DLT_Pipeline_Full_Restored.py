@@ -318,6 +318,29 @@ def aircraft_status_map_view():
         .agg(F.count(alerts["aircraft_id"]).alias("alert_count"))
     )
 
+# ✅ Step 13: Component Twins Master Table
+# This table maps each aircraft to its components with metadata for Digital Twin management.
+
+@dlt.table(
+    comment="Master registry of all component twins associated with aircraft"
+)
+def component_twins_master():
+    return spark.createDataFrame([
+        ("A320_101", "ENG_L1", "Engine", "Left Engine 1", "2022-05-10", "GE", "CFM56"),
+        ("A320_101", "GEAR_M", "LandingGear", "Main Gear", "2021-11-15", "Honeywell", "LG-HYD-X"),
+        ("A320_101", "AVN_SYS", "Avionics", "Avionics Suite", "2023-01-01", "Rockwell", "Fusion"),
+        ("A320_101", "CABIN_PRESS", "CabinPressurization", "Cabin Press System", "2022-08-25", "Collins", "CPC-9000"),
+        ("A320_101", "FRAME", "Airframe", "Main Fuselage", "2020-07-01", "Airbus", "AF-Shell")
+    ], [
+        "aircraft_id",
+        "component_id",
+        "component_type",
+        "component_name",
+        "install_date",
+        "manufacturer",
+        "model"
+    ])
+
 
 # Sanity Check 
 # ✅ Clean Steps Included:
