@@ -297,6 +297,30 @@ def aircraft_location_enriched():
         .join(airport_df, aircraft_df["base_airport_code"] == airport_df["airport_code"])
     )
 
+# # 12 Aircraft Location with Engine Health Status
+# @dlt.view(
+#     comment="Joins the latest aircraft engine health predictions with airport geolocation data to visualize aircraft status on a map"
+# )
+# def aircraft_status_map_view():
+#     # Latest aircraft-level engine health status
+#     twin_df = dlt.read("digital_twin_engine_view")
+
+#     # Airport base location for each aircraft
+#     aircraft_location_df = dlt.read("aircraft_location_reference")
+
+#     # Airport latitude/longitude and metadata
+#     airport_location_df = dlt.read("airport_location_reference")
+
+#     return (
+#         twin_df
+#         .join(aircraft_location_df, on="aircraft_id", how="left")
+#         .join(airport_location_df, aircraft_location_df["base_airport_code"] == airport_location_df["airport_code"], "left")
+#         .select(
+#             "aircraft_id", "timestamp", "engine_health_status", "predicted_anomaly",
+#             "base_airport_code", "city", "airport_name", "latitude", "longitude"
+#         )
+#     )
+
 
 # ✅ Step 12: Aircraft Status Map View with Alert Count
 # Combines aircraft geolocation, current engine health, and alert count for geospatial dashboards
@@ -342,57 +366,548 @@ def component_twins_master():
     ])
 
 
-# Sanity Check 
-# ✅ Clean Steps Included:
-# 	1.	Null checks on key columns
-# 	2.	Out-of-range checks
-# 	3.	Duplicate detection on (aircraft_id, timestamp)
-# 	4.	Anomaly score distribution
-# 	5.	Optional record count logging
-
+# ✅ Step 14: Twin - Engine Component
 import dlt
-from pyspark.sql.functions import col, count, when, isnan, current_timestamp, expr, approx_count_distinct
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
 @dlt.table(
-    comment="Post-DLT sanity check validation results",
+    comment="Digital twin sensor data for engine components"
+)
+def twin_engine():
+    schema = StructType([
+        StructField("engine_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("thrust_level", DoubleType()),
+        StructField("fuel_consumption_rate", DoubleType()),
+        StructField("temperature_reading", DoubleType()),
+        StructField("vibration_level", DoubleType()),
+        StructField("oil_pressure", DoubleType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/engine")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 14A: Component Health Status for Engine
+import dlt
+from pyspark.sql.functions import col, when
+
+@dlt.table(
+    comment="Health status classification for engine components based on sensor metrics"
+)
+def component_health_engine():
+    df = dlt.read("twin_engine")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("temperature_reading") > 750) |
+                (col("vibration_level") > 1.8) |
+                (col("oil_pressure") < 40),
+                "CRITICAL"
+            ).when(
+                (col("temperature_reading") > 700) |
+                (col("vibration_level") > 1.2) |
+                (col("oil_pressure") < 50),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("engine_id").alias("component_id"),
+            col("event_timestamp"),
+            col("thrust_level"),
+            col("temperature_reading"),
+            col("vibration_level"),
+            col("oil_pressure"),
+            col("fuel_consumption_rate"),
+            col("health_status")
+        )
+    )
+
+# ✅ Step 15: Twin - Landing Gear Component
+@dlt.table(
+    comment="Digital twin sensor data for landing gear components"
+)
+def twin_landing_gear():
+    schema = StructType([
+        StructField("gear_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("hydraulic_pressure", DoubleType()),
+        StructField("strut_compression", DoubleType()),
+        StructField("brake_wear", DoubleType()),
+        StructField("brake_temperature", DoubleType()),
+        StructField("shock_absorber_status", DoubleType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/landing_gear")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 15A: Component Health Status for Landing Gear
+import dlt
+from pyspark.sql.functions import col, when
+
+@dlt.table(
+    comment="Health status classification for landing gear components based on sensor metrics"
+)
+def component_health_landing_gear():
+    df = dlt.read("twin_landing_gear")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("brake_temperature") > 450) |
+                (col("brake_wear") > 80) |
+                (col("shock_absorber_status") < 60),
+                "CRITICAL"
+            ).when(
+                (col("brake_temperature") > 350) |
+                (col("brake_wear") > 60) |
+                (col("shock_absorber_status") < 70),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("gear_id").alias("component_id"),
+            col("event_timestamp"),
+            col("hydraulic_pressure"),
+            col("strut_compression"),
+            col("brake_wear"),
+            col("brake_temperature"),
+            col("shock_absorber_status"),
+            col("health_status")
+        )
+    )
+
+# ✅ Step 16: Twin - Avionics Systems Component
+@dlt.table(
+    comment="Digital twin telemetry for avionics systems"
+)
+def twin_avionics():
+    schema = StructType([
+        StructField("avionics_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("power_status", DoubleType()),
+        StructField("signal_integrity", DoubleType()),
+        StructField("data_transmission_rate", DoubleType()),
+        StructField("system_temperature", DoubleType()),
+        StructField("error_logs", IntegerType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/avionics")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 16A: Component Health Status for Avionics Systems
+import dlt
+from pyspark.sql.functions import col, when
+
+@dlt.table(
+    comment="Health status classification for avionics systems based on telemetry metrics"
+)
+def component_health_avionics():
+    df = dlt.read("twin_avionics")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("signal_integrity") < 20) |
+                (col("error_logs") > 5) |
+                (col("system_temperature") > 50),
+                "CRITICAL"
+            ).when(
+                (col("signal_integrity") < 30) |
+                (col("error_logs") > 3) |
+                (col("system_temperature") > 40),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("avionics_id").alias("component_id"),
+            col("event_timestamp"),
+            col("power_status"),
+            col("signal_integrity"),
+            col("data_transmission_rate"),
+            col("system_temperature"),
+            col("error_logs"),
+            col("health_status")
+        )
+    )
+
+
+# ✅ Step 17: Twin - Cabin Pressurization System
+@dlt.table(
+    comment="Digital twin data for cabin pressurization components"
+)
+def twin_cabin_pressurization():
+    schema = StructType([
+        StructField("cabin_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("cabin_pressure", DoubleType()),
+        StructField("seal_integrity", DoubleType()),
+        StructField("airflow_rate", DoubleType()),
+        StructField("temperature_control", DoubleType()),
+        StructField("humidity_level", DoubleType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/cabin")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 17A: Component Health Status for Cabin Pressurization
+import dlt
+from pyspark.sql.functions import col, when
+
+@dlt.table(
+    comment="Health status classification for cabin pressurization systems based on environmental metrics"
+)
+def component_health_cabin_pressurization():
+    df = dlt.read("twin_cabin_pressurization")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("cabin_pressure") < 10) |
+                (col("seal_integrity") < 85) |
+                (col("airflow_rate") < 300),
+                "CRITICAL"
+            ).when(
+                (col("cabin_pressure") < 11) |
+                (col("seal_integrity") < 90) |
+                (col("airflow_rate") < 350),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("cabin_id").alias("component_id"),
+            col("event_timestamp"),
+            col("cabin_pressure"),
+            col("seal_integrity"),
+            col("airflow_rate"),
+            col("temperature_control"),
+            col("humidity_level"),
+            col("health_status")
+        )
+    )
+
+
+
+# ✅ Step 18: Twin - Airframe Component
+@dlt.table(
+    comment="Digital twin structural data for aircraft airframes"
+)
+def twin_airframe():
+    schema = StructType([
+        StructField("airframe_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("stress_points", DoubleType()),
+        StructField("fatigue_crack_growth", DoubleType()),
+        StructField("temperature_fluctuations", DoubleType()),
+        StructField("structural_integrity", DoubleType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/airframe")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 18A: Component Health Status for Airframe
+import dlt
+from pyspark.sql.functions import col, when
+
+@dlt.table(
+    comment="Health status classification for airframe based on structural integrity and stress metrics"
+)
+def component_health_airframe():
+    df = dlt.read("twin_airframe")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("stress_points") > 280) |
+                (col("fatigue_crack_growth") > 8) |
+                (col("structural_integrity") < 60),
+                "CRITICAL"
+            ).when(
+                (col("stress_points") > 200) |
+                (col("fatigue_crack_growth") > 5) |
+                (col("structural_integrity") < 75),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("airframe_id").alias("component_id"),
+            col("event_timestamp"),
+            col("stress_points"),
+            col("fatigue_crack_growth"),
+            col("temperature_fluctuations"),
+            col("structural_integrity"),
+            col("health_status")
+        )
+    )
+
+
+
+# ✅ Step 19: Unified Component Health View
+import dlt
+from pyspark.sql.functions import lit
+
+@dlt.table(
+    comment="Combined digital twin component-level health status across all systems"
+)
+def digital_twin_component_view():
+    engine = dlt.read("component_health_engine").withColumn("component_type", lit("Engine"))
+    gear = dlt.read("component_health_landing_gear").withColumn("component_type", lit("LandingGear"))
+    avionics = dlt.read("component_health_avionics").withColumn("component_type", lit("Avionics"))
+    cabin = dlt.read("component_health_cabin_pressurization").withColumn("component_type", lit("CabinPressurization"))    
+    airframe = dlt.read("component_health_airframe").withColumn("component_type", lit("Airframe"))
+
+    return engine.unionByName(gear, allowMissingColumns=True) \
+                 .unionByName(avionics, allowMissingColumns=True) \
+                 .unionByName(cabin, allowMissingColumns=True) \
+                 .unionByName(airframe, allowMissingColumns=True)
+
+from pyspark.sql.functions import current_timestamp
+
+# ✅ Step 19A: Component-Level Anomaly Alerts Table
+# This table identifies components currently in CRITICAL or WARNING health states.
+# Since the unified digital_twin_component_view does not carry forward the original event_timestamp 
+# from each component source, we assign the alert timestamp as the current system timestamp
+# to record when the alert was generated in this pipeline.
+@dlt.table(
+    comment="Alert table for components in CRITICAL or WARNING health states"
+)
+def anomaly_alerts_component():
+    df = dlt.read("digital_twin_component_view")
+
+    return (
+        df.filter(col("health_status").isin("CRITICAL", "WARNING"))
+          .withColumn("alert_timestamp", col("event_timestamp"))
+          .select(
+              "aircraft_id",
+              "component_id",
+              "component_type",
+              "health_status",
+              "alert_timestamp"
+          )
+    )
+
+    
+
+
+
+# ✅ Step 21: DLT Pipeline Summary Log Table
+# This table captures a snapshot summary after each DLT run, including:
+# - Total component records per aircraft and component type
+# - Total alert counts per aircraft and health status
+# - A current run timestamp to track when the summary was generated
+# 
+# This acts as a lightweight DLT run log, useful for:
+# ✅ Monitoring pipeline execution health
+# ✅ Auditing record volumes over time
+# ✅ Powering dashboards or reports without running separate queries
+# 
+# Note: This summary is refreshed on every DLT pipeline run.
+import dlt
+from pyspark.sql.functions import col, count, when, current_timestamp
+
+import dlt
+from pyspark.sql.functions import col, count, when, current_timestamp
+
+@dlt.table(
+    comment="Extended sanity check validation across sensor features, component-level twins, alerts, and location mappings",
     table_properties={
         "pipelines.materialize": "true"
     }
 )
 def post_dlt_sanity_check():
-    df = dlt.read("sensor_features")
-
-    # Null value checks
-    null_counts = df.select([
-        count(when(col(c).isNull(), c)).alias(f"{c}_nulls")
+    # Sensor Features Table
+    sensor_df = dlt.read("sensor_features")
+    sensor_nulls = sensor_df.select([
+        count(when(col(c).isNull(), c)).alias(f"sensor_{c}_nulls")
         for c in ["timestamp", "aircraft_id", "engine_temp", "fuel_efficiency", "vibration"]
     ])
+    sensor_violations = sensor_df.filter(
+        (col("engine_temp") > 1000) | (col("engine_temp") < 0) | (col("vibration") < 0)
+    ).agg(count("*").alias("sensor_out_of_range"))
+    sensor_dupes = sensor_df.groupBy("aircraft_id", "timestamp").count() \
+        .filter("count > 1").agg(count("*").alias("sensor_duplicate_pk"))
+    sensor_count = sensor_df.agg(count("*").alias("sensor_row_count"))
 
-    # Range violation checks
-    out_of_range = df.filter(
-        (col("engine_temp") > 1000) |
-        (col("engine_temp") < 0) |
-        (col("vibration") < 0)
-    ).agg(count("*").alias("out_of_range_violations"))
+    # Landing Gear
+    gear_df = dlt.read("twin_landing_gear")
+    gear_nulls = gear_df.select([
+        count(when(col(c).isNull(), c)).alias(f"gear_{c}_nulls")
+        for c in gear_df.columns
+    ])
+    gear_count = gear_df.agg(count("*").alias("gear_row_count"))
 
-    # Duplicate key detection
-    duplicate_check = df.groupBy("aircraft_id", "timestamp") \
-        .count() \
-        .filter("count > 1") \
-        .agg(count("*").alias("duplicate_pk_rows"))
+    # Avionics
+    avionics_df = dlt.read("twin_avionics")
+    avionics_nulls = avionics_df.select([
+        count(when(col(c).isNull(), c)).alias(f"avionics_{c}_nulls")
+        for c in avionics_df.columns
+    ])
+    avionics_count = avionics_df.agg(count("*").alias("avionics_row_count"))
 
-    # Anomaly score distribution
-    anomaly_dist = df.groupBy("anomaly_score").count().alias("anomaly_distribution")
+    # Cabin Pressurization
+    cabin_df = dlt.read("twin_cabin_pressurization")
+    cabin_nulls = cabin_df.select([
+        count(when(col(c).isNull(), c)).alias(f"cabin_{c}_nulls")
+        for c in cabin_df.columns
+    ])
+    cabin_count = cabin_df.agg(count("*").alias("cabin_row_count"))
 
-    # Record count
-    record_count = df.agg(count("*").alias("total_sensor_feature_rows"))
+    # Airframe
+    airframe_df = dlt.read("twin_airframe")
+    airframe_nulls = airframe_df.select([
+        count(when(col(c).isNull(), c)).alias(f"airframe_{c}_nulls")
+        for c in airframe_df.columns
+    ])
+    airframe_count = airframe_df.agg(count("*").alias("airframe_row_count"))
 
-    # Join all checks into one row
+    # Component Alerts
+    component_alerts = dlt.read("anomaly_alerts_component") \
+        .groupBy("health_status") \
+        .agg(count("*").alias("component_alert_count")) \
+        .withColumnRenamed("health_status", "component_alert_health_status")
+
+    # Combine all sanity check outputs into one row
     result = (
-        null_counts.crossJoin(out_of_range)
-                   .crossJoin(duplicate_check)
-                   .crossJoin(record_count)
-                   .withColumn("check_time", current_timestamp())
+        sensor_nulls.crossJoin(sensor_violations)
+                    .crossJoin(sensor_dupes)
+                    .crossJoin(sensor_count)
+                    .crossJoin(gear_nulls)
+                    .crossJoin(gear_count)
+                    .crossJoin(avionics_nulls)
+                    .crossJoin(avionics_count)
+                    .crossJoin(cabin_nulls)
+                    .crossJoin(cabin_count)
+                    .crossJoin(airframe_nulls)
+                    .crossJoin(airframe_count)
+                    .crossJoin(component_alerts)
+                    .withColumn("check_time", current_timestamp())
     )
 
-    return result
+    return result;
+
+
+
+# ✅ Step 22: Airport Reference Table (cleaned + materialized)
+@dlt.table(
+    comment="Materialized reference table for airports, with lat/lon and metadata"
+)
+def airport_reference():
+    return spark.createDataFrame([
+        ("SFO", "San Francisco Intl", "San Francisco", 37.6213, -122.3790),
+        ("LAX", "Los Angeles Intl", "Los Angeles", 33.9416, -118.4085),
+        ("JFK", "John F. Kennedy Intl", "New York", 40.6413, -73.7781),
+        ("ORD", "O'Hare Intl", "Chicago", 41.9742, -87.9073)
+    ], ["airport_code", "airport_name", "city", "latitude", "longitude"])
+
+# ✅ Step 23: Aircraft-to-Airport Mapping Table
+@dlt.table(
+    comment="Mapping table linking aircraft IDs to their base airport codes"
+)
+def aircraft_airport_map():
+    return spark.createDataFrame([
+        ("A320_101", "SFO"),
+        ("A320_102", "SFO"),
+        ("A320_103", "SFO"),
+        ("A320_104", "SFO"),
+        ("A330_301", "LAX"),
+        ("A330_302", "LAX"),
+        ("A330_303", "LAX"),
+        ("B737_201", "JFK"),
+        ("B737_202", "ORD"),
+        ("B737_203", "ORD")
+    ], ["aircraft_id", "airport_code"])
+
+
+# ✅ Step 24: Aircraft Location Enriched Table (Aircraft + Airport Metadata + Lat/Lon)
+@dlt.table(
+    comment="Aircraft mapped with airport metadata and coordinates for geospatial dashboards"
+)
+def aircraft_location_enriched_v2():
+    aircraft_df = dlt.read("aircraft_airport_map")
+    airport_df = dlt.read("airport_reference")
+
+    return (
+        aircraft_df
+        .join(airport_df, on="airport_code", how="left")
+        .select(
+            "aircraft_id", "airport_code", "airport_name", "city", "latitude", "longitude"
+        )
+    )
+
+# ✅ Step 25: Aircraft Status Map View (Engine Health + Alert Counts + Location)
+@dlt.table(
+    comment="Aircraft geolocation with engine health status and anomaly alert counts for map visualization"
+)
+def aircraft_status_map_view_v2():
+    loc = dlt.read("aircraft_location_enriched")
+    twin = dlt.read("digital_twin_engine_view")
+    alerts = spark.read.table("arao.aerodemo.anomaly_alerts")  # non-DLT table
+
+    return (
+        loc
+        .join(twin, on="aircraft_id", how="left")
+        .join(alerts, on="aircraft_id", how="left")
+        .groupBy("aircraft_id", "airport_code", "latitude", "longitude", "engine_health_status")
+        .agg(F.count(alerts["aircraft_id"]).alias("alert_count"))
+    )
+
+
+
+# ✅ Step 26: Component-Level Alert Map View
+@dlt.table(
+    comment="Aggregated component health alerts by airport location for geospatial dashboards"
+)
+def component_status_map_view():
+    loc = dlt.read("aircraft_location_enriched")
+    alerts = dlt.read("anomaly_alerts_component")
+
+    return (
+        loc.join(alerts, on="aircraft_id", how="left")
+           .groupBy("airport_code", "latitude", "longitude", "component_type", "health_status")
+           .agg(F.count("*").alias("alert_count"))
+    )
