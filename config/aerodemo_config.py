@@ -8,7 +8,12 @@ CONFIG = {
         },
         "pat_token": "dapi-DEV-XXXXXX",
         "databricks_instance": "https://dev-demo-field-eng.cloud.databricks.com",
-        "e2e_workflow_job_id": "dev-864722071013094"
+        "e2e_workflow_job_id": "dev-864722071013094",
+        "workflow_configs": {
+            "workflow_name": "AeroDemo_DataPipeline",
+            "existing_cluster_id": "0527-220936-f3oreeiv",
+            "dlt_pipeline_id": "a2ccd850-4b28-4f30-9a53-0fd5f5499713"
+        }
     },
     "staging": {
         "catalog": "arao_staging",
@@ -19,7 +24,12 @@ CONFIG = {
         },
         "pat_token": "dapi-STAGING-XXXXXX",
         "databricks_instance": "https://staging-demo-field-eng.cloud.databricks.com",
-        "e2e_workflow_job_id": "staging-864722071013094"
+        "e2e_workflow_job_id": "staging-864722071013094",
+        "workflow_configs": {
+            "workflow_name": "AeroDemo_DataPipeline_Staging",
+            "existing_cluster_id": "staging-cluster-id",
+            "dlt_pipeline_id": "staging-dlt-pipeline-id"
+        }
     },
     "prod": {
         "catalog": "arao",
@@ -30,7 +40,12 @@ CONFIG = {
         },
         "pat_token": "dapi-PROD-XXXXXX",
         "databricks_instance": "https://e2-demo-field-eng.cloud.databricks.com",
-        "e2e_workflow_job_id": "864722071013094"
+        "e2e_workflow_job_id": "864722071013094",
+        "workflow_configs": {
+            "workflow_name": "AeroDemo_DataPipeline_Prod",
+            "existing_cluster_id": "prod-cluster-id",
+            "dlt_pipeline_id": "prod-dlt-pipeline-id"
+        }
     }
 }
 
