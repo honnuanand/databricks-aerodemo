@@ -841,25 +841,49 @@ def airport_reference():
         ("SFO", "San Francisco Intl", "San Francisco", 37.6213, -122.3790),
         ("LAX", "Los Angeles Intl", "Los Angeles", 33.9416, -118.4085),
         ("JFK", "John F. Kennedy Intl", "New York", 40.6413, -73.7781),
-        ("ORD", "O'Hare Intl", "Chicago", 41.9742, -87.9073)
+        ("ORD", "O'Hare Intl", "Chicago", 41.9742, -87.9073),
+        ("DFW", "Dallas/Fort Worth Intl", "Dallas", 32.8998, -97.0403)
     ], ["airport_code", "airport_name", "city", "latitude", "longitude"])
 
 # ✅ Step 23: Aircraft-to-Airport Mapping Table
+
 @dlt.table(
     comment="Mapping table linking aircraft IDs to their base airport codes"
 )
 def aircraft_airport_map():
     return spark.createDataFrame([
+        # A320 family
         ("A320_101", "SFO"),
         ("A320_102", "SFO"),
         ("A320_103", "SFO"),
         ("A320_104", "SFO"),
+        ("A320_105", "SFO"),
+        # B737 family
+        ("B737_201", "JFK"),
+        ("B737_202", "JFK"),
+        ("B737_203", "JFK"),
+        ("B737_204", "JFK"),
+        ("B737_205", "JFK"),
+        ("B737_301", "JFK"),    # ✅ ADD: B737_301
+        # A330 family
+        ("A330_201", "LAX"),    # ✅ ADD: A330_201
         ("A330_301", "LAX"),
         ("A330_302", "LAX"),
         ("A330_303", "LAX"),
-        ("B737_201", "JFK"),
-        ("B737_202", "ORD"),
-        ("B737_203", "ORD")
+        ("A330_304", "LAX"),
+        ("A330_305", "LAX"),
+        # B777 family
+        ("B777_401", "ORD"),
+        ("B777_402", "ORD"),
+        ("B777_403", "ORD"),
+        ("B777_404", "ORD"),
+        ("B777_405", "ORD"),
+        # E190 family
+        ("E190_501", "SEA"),
+        ("E190_502", "SEA"),
+        ("E190_503", "SEA"),
+        ("E190_504", "SEA"),
+        ("E190_505", "SEA"),
     ], ["aircraft_id", "airport_code"])
 
 
