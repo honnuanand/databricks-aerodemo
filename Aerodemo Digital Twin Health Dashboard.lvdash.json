@@ -1379,7 +1379,14 @@
             "color" : {
               "fieldName" : "health_status",
               "scale" : {
-                "type" : "categorical"
+                "type" : "categorical",
+                "mappings" : [ {
+                  "value" : "CRITICAL",
+                  "color" : {
+                    "themeColorType" : "visualizationColors",
+                    "position" : 4
+                  }
+                } ]
               },
               "displayName" : "health_status"
             },
