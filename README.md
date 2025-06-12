@@ -1,4 +1,4 @@
-# 🛫 AeroDemo: Predictive Maintenance with Digital Twins in Databricks
+# 🛫 AeroTwin: Predictive Maintenance with Digital Twins in Databricks
 
 This project simulates a digital twin for commercial aircraft using synthetic sensor and maintenance data. Built on Databricks with Delta Live Tables (DLT), MLflow, and Unity Catalog, it demonstrates how to engineer features, predict anomalies, and evolve toward a Digital Twin architecture at both aircraft and component levels.
 
