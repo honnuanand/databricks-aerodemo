@@ -354,7 +354,11 @@ def component_twins_master():
         ("A320_101", "GEAR_M", "LandingGear", "Main Gear", "2021-11-15", "Honeywell", "LG-HYD-X"),
         ("A320_101", "AVN_SYS", "Avionics", "Avionics Suite", "2023-01-01", "Rockwell", "Fusion"),
         ("A320_101", "CABIN_PRESS", "CabinPressurization", "Cabin Press System", "2022-08-25", "Collins", "CPC-9000"),
-        ("A320_101", "FRAME", "Airframe", "Main Fuselage", "2020-07-01", "Airbus", "AF-Shell")
+        ("A320_101", "FRAME", "Airframe", "Main Fuselage", "2020-07-01", "Airbus", "AF-Shell"),
+        ("A320_101", "EL_SYS", "ElectricalSystems", "Electrical Power System", "2022-03-15", "Honeywell", "EP-2000"),
+        ("A320_101", "FUEL_SYS", "FuelSystems", "Fuel Management System", "2021-09-20", "Parker", "FMS-3000"),
+        ("A320_101", "HYD_SYS", "HydraulicSystems", "Hydraulic Control System", "2022-01-10", "Eaton", "HCS-500"),
+        ("A320_101", "ENV_SYS", "EnvironmentalSystems", "Environmental Control", "2022-06-05", "Collins", "ECS-400")
     ], [
         "aircraft_id",
         "component_id",
@@ -685,14 +689,388 @@ def component_health_airframe():
         )
     )
 
+# ✅ Step 19: Twin - Electrical Systems Component
+@dlt.table(
+    comment="Digital twin sensor data for electrical systems components"
+)
+def twin_electrical_systems():
+    schema = StructType([
+        StructField("electrical_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("battery_voltage", DoubleType()),
+        StructField("charge_level", DoubleType()),
+        StructField("power_distribution_efficiency", DoubleType()),
+        StructField("electrical_load", DoubleType()),
+        StructField("transformer_health", DoubleType()),
+        StructField("fault_code", StringType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/electrical")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
 
+# ✅ Step 19A: Component Health Status for Electrical Systems
+@dlt.table(
+    comment="Health status classification for electrical systems based on power and battery metrics"
+)
+def component_health_electrical_systems():
+    df = dlt.read("twin_electrical_systems")
 
-# ✅ Step 19: Unified Component Health View
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("battery_voltage") < 24) |
+                (col("charge_level") < 30) |
+                (col("power_distribution_efficiency") < 85) |
+                (col("fault_code") == "FAIL"),
+                "CRITICAL"
+            ).when(
+                (col("battery_voltage") < 25) |
+                (col("charge_level") < 50) |
+                (col("power_distribution_efficiency") < 90) |
+                (col("fault_code") == "WARN"),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("electrical_id").alias("component_id"),
+            col("event_timestamp"),
+            col("battery_voltage"),
+            col("charge_level"),
+            col("power_distribution_efficiency"),
+            col("electrical_load"),
+            col("transformer_health"),
+            col("fault_code"),
+            col("health_status")
+        )
+    )
+
+# ✅ Step 20: Twin - Fuel Systems Component
+@dlt.table(
+    comment="Digital twin sensor data for fuel systems components"
+)
+def twin_fuel_systems():
+    schema = StructType([
+        StructField("fuel_system_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("fuel_level", DoubleType()),
+        StructField("fuel_flow_rate", DoubleType()),
+        StructField("fuel_pressure", DoubleType()),
+        StructField("fuel_temperature", DoubleType()),
+        StructField("tank_balance", DoubleType()),
+        StructField("pump_health", DoubleType()),
+        StructField("anomaly_flag", StringType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/fuel")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 20A: Component Health Status for Fuel Systems
+@dlt.table(
+    comment="Health status classification for fuel systems based on fuel delivery and balance metrics"
+)
+def component_health_fuel_systems():
+    df = dlt.read("twin_fuel_systems")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("fuel_level") < 15) |
+                (col("fuel_pressure") < 25) |
+                (col("pump_health") < 0.85) |
+                (col("anomaly_flag") == "FAIL"),
+                "CRITICAL"
+            ).when(
+                (col("fuel_level") < 25) |
+                (col("fuel_pressure") < 30) |
+                (col("pump_health") < 0.90) |
+                (col("anomaly_flag") == "WARN"),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("fuel_system_id").alias("component_id"),
+            col("event_timestamp"),
+            col("fuel_level"),
+            col("fuel_flow_rate"),
+            col("fuel_pressure"),
+            col("fuel_temperature"),
+            col("tank_balance"),
+            col("pump_health"),
+            col("anomaly_flag"),
+            col("health_status")
+        )
+    )
+
+# ✅ Step 21: Twin - Hydraulic Systems Component
+@dlt.table(
+    comment="Digital twin sensor data for hydraulic systems components"
+)
+def twin_hydraulic_systems():
+    schema = StructType([
+        StructField("hydraulic_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("hydraulic_pressure", DoubleType()),
+        StructField("fluid_temperature", DoubleType()),
+        StructField("fluid_level", DoubleType()),
+        StructField("pump_performance", DoubleType()),
+        StructField("line_integrity", DoubleType()),
+        StructField("anomaly_flag", StringType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/hydraulic")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 21A: Component Health Status for Hydraulic Systems
+@dlt.table(
+    comment="Health status classification for hydraulic systems based on pressure and fluid metrics"
+)
+def component_health_hydraulic_systems():
+    df = dlt.read("twin_hydraulic_systems")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("hydraulic_pressure") < 2400) |
+                (col("fluid_level") < 60) |
+                (col("pump_performance") < 0.85) |
+                (col("line_integrity") < 0.95) |
+                (col("anomaly_flag").isin("LEAK", "PRESSURE_DROP")),
+                "CRITICAL"
+            ).when(
+                (col("hydraulic_pressure") < 2600) |
+                (col("fluid_level") < 75) |
+                (col("pump_performance") < 0.90) |
+                (col("line_integrity") < 0.98) |
+                (col("anomaly_flag") == "WARN"),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("hydraulic_id").alias("component_id"),
+            col("event_timestamp"),
+            col("hydraulic_pressure"),
+            col("fluid_temperature"),
+            col("fluid_level"),
+            col("pump_performance"),
+            col("line_integrity"),
+            col("anomaly_flag"),
+            col("health_status")
+        )
+    )
+
+# ✅ Step 22: Twin - Environmental Systems Component
+@dlt.table(
+    comment="Digital twin data for environmental and weather systems"
+)
+def twin_environmental_systems():
+    schema = StructType([
+        StructField("environmental_id", StringType()),
+        StructField("aircraft_id", StringType()),
+        StructField("event_timestamp", StringType()),
+        StructField("external_temperature", DoubleType()),
+        StructField("humidity", DoubleType()),
+        StructField("wind_speed", DoubleType()),
+        StructField("crosswind_impact", DoubleType()),
+        StructField("precipitation", StringType()),
+        StructField("atmospheric_pressure", DoubleType()),
+        StructField("extreme_event", StringType())
+    ])
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format", "csv")
+            .option("header", "true")
+            .schema(schema)
+            .load("/Volumes/arao/aerodemo/tmp/environmental")
+            .withColumn("event_timestamp", F.to_timestamp("event_timestamp", "yyyy-MM-dd HH:mm:ss"))
+    )
+
+# ✅ Step 22A: Component Health Status for Environmental Systems
+@dlt.table(
+    comment="Health status classification for environmental systems based on weather and atmospheric conditions"
+)
+def component_health_environmental_systems():
+    df = dlt.read("twin_environmental_systems")
+
+    return (
+        df.withColumn(
+            "health_status",
+            when(
+                (col("wind_speed") > 120) |
+                (col("crosswind_impact") > 25) |
+                (col("atmospheric_pressure") < 950) |
+                (col("extreme_event").isin("SEVERE_WIND", "THUNDERSTORM")),
+                "CRITICAL"
+            ).when(
+                (col("wind_speed") > 80) |
+                (col("crosswind_impact") > 20) |
+                (col("atmospheric_pressure") < 980) |
+                (col("extreme_event") == "TURBULENCE"),
+                "WARNING"
+            ).otherwise("NOMINAL")
+        )
+        .select(
+            col("aircraft_id"),
+            col("environmental_id").alias("component_id"),
+            col("event_timestamp"),
+            col("external_temperature"),
+            col("humidity"),
+            col("wind_speed"),
+            col("crosswind_impact"),
+            col("precipitation"),
+            col("atmospheric_pressure"),
+            col("extreme_event"),
+            col("health_status")
+        )
+    )
+
+# ✅ Step 23: Component Feature Engineering Tables (New Components)
+
+# Electrical Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for electrical systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_electrical_systems():
+    df = dlt.read("component_health_electrical_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_battery_voltage", lag("battery_voltage", 1).over(lag_window))
+          .withColumn("prev_charge_level", lag("charge_level", 1).over(lag_window))
+          .withColumn("prev_power_efficiency", lag("power_distribution_efficiency", 1).over(lag_window))
+          .withColumn("avg_battery_voltage_7d", avg("battery_voltage").over(rolling))
+          .withColumn("avg_charge_level_7d", avg("charge_level").over(rolling))
+          .withColumn("avg_power_efficiency_7d", avg("power_distribution_efficiency").over(rolling))
+          .withColumn("avg_electrical_load_7d", avg("electrical_load").over(rolling))
+          .withColumn("avg_transformer_health_7d", avg("transformer_health").over(rolling))
+    )
+
+# Fuel Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for fuel systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_fuel_systems():
+    df = dlt.read("component_health_fuel_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_fuel_level", lag("fuel_level", 1).over(lag_window))
+          .withColumn("prev_fuel_pressure", lag("fuel_pressure", 1).over(lag_window))
+          .withColumn("prev_pump_health", lag("pump_health", 1).over(lag_window))
+          .withColumn("avg_fuel_level_7d", avg("fuel_level").over(rolling))
+          .withColumn("avg_fuel_pressure_7d", avg("fuel_pressure").over(rolling))
+          .withColumn("avg_pump_health_7d", avg("pump_health").over(rolling))
+          .withColumn("avg_fuel_flow_rate_7d", avg("fuel_flow_rate").over(rolling))
+          .withColumn("avg_tank_balance_7d", avg("tank_balance").over(rolling))
+    )
+
+# Hydraulic Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for hydraulic systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_hydraulic_systems():
+    df = dlt.read("component_health_hydraulic_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_hydraulic_pressure", lag("hydraulic_pressure", 1).over(lag_window))
+          .withColumn("prev_fluid_level", lag("fluid_level", 1).over(lag_window))
+          .withColumn("prev_pump_performance", lag("pump_performance", 1).over(lag_window))
+          .withColumn("avg_hydraulic_pressure_7d", avg("hydraulic_pressure").over(rolling))
+          .withColumn("avg_fluid_level_7d", avg("fluid_level").over(rolling))
+          .withColumn("avg_pump_performance_7d", avg("pump_performance").over(rolling))
+          .withColumn("avg_fluid_temperature_7d", avg("fluid_temperature").over(rolling))
+          .withColumn("avg_line_integrity_7d", avg("line_integrity").over(rolling))
+    )
+
+# Environmental Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for environmental systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_environmental_systems():
+    df = dlt.read("component_health_environmental_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_wind_speed", lag("wind_speed", 1).over(lag_window))
+          .withColumn("prev_atmospheric_pressure", lag("atmospheric_pressure", 1).over(lag_window))
+          .withColumn("prev_crosswind_impact", lag("crosswind_impact", 1).over(lag_window))
+          .withColumn("avg_wind_speed_7d", avg("wind_speed").over(rolling))
+          .withColumn("avg_atmospheric_pressure_7d", avg("atmospheric_pressure").over(rolling))
+          .withColumn("avg_crosswind_impact_7d", avg("crosswind_impact").over(rolling))
+          .withColumn("avg_external_temperature_7d", avg("external_temperature").over(rolling))
+          .withColumn("avg_humidity_7d", avg("humidity").over(rolling))
+    )
+
+# ✅ Step 24: Unified Component Health View (Updated with all 10 components)
 import dlt
 from pyspark.sql.functions import lit
 
 @dlt.table(
-    comment="Combined digital twin component-level health status across all systems"
+    comment="Combined digital twin component-level health status across all 10 systems"
 )
 def digital_twin_component_view():
     engine = dlt.read("component_health_engine").withColumn("component_type", lit("Engine"))
@@ -700,11 +1078,19 @@ def digital_twin_component_view():
     avionics = dlt.read("component_health_avionics").withColumn("component_type", lit("Avionics"))
     cabin = dlt.read("component_health_cabin_pressurization").withColumn("component_type", lit("CabinPressurization"))    
     airframe = dlt.read("component_health_airframe").withColumn("component_type", lit("Airframe"))
+    electrical = dlt.read("component_health_electrical_systems").withColumn("component_type", lit("ElectricalSystems"))
+    fuel = dlt.read("component_health_fuel_systems").withColumn("component_type", lit("FuelSystems"))
+    hydraulic = dlt.read("component_health_hydraulic_systems").withColumn("component_type", lit("HydraulicSystems"))
+    environmental = dlt.read("component_health_environmental_systems").withColumn("component_type", lit("EnvironmentalSystems"))
 
     return engine.unionByName(gear, allowMissingColumns=True) \
                  .unionByName(avionics, allowMissingColumns=True) \
                  .unionByName(cabin, allowMissingColumns=True) \
-                 .unionByName(airframe, allowMissingColumns=True)
+                 .unionByName(airframe, allowMissingColumns=True) \
+                 .unionByName(electrical, allowMissingColumns=True) \
+                 .unionByName(fuel, allowMissingColumns=True) \
+                 .unionByName(hydraulic, allowMissingColumns=True) \
+                 .unionByName(environmental, allowMissingColumns=True)
 
 from pyspark.sql.functions import current_timestamp
 
@@ -747,9 +1133,6 @@ def anomaly_alerts_component():
 # ✅ Powering dashboards or reports without running separate queries
 # 
 # Note: This summary is refreshed on every DLT pipeline run.
-import dlt
-from pyspark.sql.functions import col, count, when, current_timestamp
-
 import dlt
 from pyspark.sql.functions import col, count, when, current_timestamp
 
@@ -805,6 +1188,38 @@ def post_dlt_sanity_check():
     ])
     airframe_count = airframe_df.agg(count("*").alias("airframe_row_count"))
 
+    # Electrical Systems
+    electrical_df = dlt.read("twin_electrical_systems")
+    electrical_nulls = electrical_df.select([
+        count(when(col(c).isNull(), c)).alias(f"electrical_{c}_nulls")
+        for c in electrical_df.columns
+    ])
+    electrical_count = electrical_df.agg(count("*").alias("electrical_row_count"))
+
+    # Fuel Systems
+    fuel_df = dlt.read("twin_fuel_systems")
+    fuel_nulls = fuel_df.select([
+        count(when(col(c).isNull(), c)).alias(f"fuel_{c}_nulls")
+        for c in fuel_df.columns
+    ])
+    fuel_count = fuel_df.agg(count("*").alias("fuel_row_count"))
+
+    # Hydraulic Systems
+    hydraulic_df = dlt.read("twin_hydraulic_systems")
+    hydraulic_nulls = hydraulic_df.select([
+        count(when(col(c).isNull(), c)).alias(f"hydraulic_{c}_nulls")
+        for c in hydraulic_df.columns
+    ])
+    hydraulic_count = hydraulic_df.agg(count("*").alias("hydraulic_row_count"))
+
+    # Environmental Systems
+    environmental_df = dlt.read("twin_environmental_systems")
+    environmental_nulls = environmental_df.select([
+        count(when(col(c).isNull(), c)).alias(f"environmental_{c}_nulls")
+        for c in environmental_df.columns
+    ])
+    environmental_count = environmental_df.agg(count("*").alias("environmental_row_count"))
+
     # Component Alerts
     component_alerts = dlt.read("anomaly_alerts_component") \
         .groupBy("health_status") \
@@ -824,11 +1239,19 @@ def post_dlt_sanity_check():
                     .crossJoin(cabin_count)
                     .crossJoin(airframe_nulls)
                     .crossJoin(airframe_count)
+                    .crossJoin(electrical_nulls)
+                    .crossJoin(electrical_count)
+                    .crossJoin(fuel_nulls)
+                    .crossJoin(fuel_count)
+                    .crossJoin(hydraulic_nulls)
+                    .crossJoin(hydraulic_count)
+                    .crossJoin(environmental_nulls)
+                    .crossJoin(environmental_count)
                     .crossJoin(component_alerts)
                     .withColumn("check_time", current_timestamp())
     )
 
-    return result;
+    return result
 
 
 

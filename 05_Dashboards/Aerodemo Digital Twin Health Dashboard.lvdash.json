@@ -757,7 +757,7 @@
       },
       "position" : {
         "x" : 0,
-        "y" : 16,
+        "y" : 26,
         "width" : 3,
         "height" : 6
       }
@@ -823,7 +823,7 @@
       },
       "position" : {
         "x" : 0,
-        "y" : 7,
+        "y" : 17,
         "width" : 6,
         "height" : 9
       }
@@ -886,7 +886,7 @@
       },
       "position" : {
         "x" : 3,
-        "y" : 16,
+        "y" : 26,
         "width" : 3,
         "height" : 6
       }
@@ -966,7 +966,7 @@
       },
       "position" : {
         "x" : 0,
-        "y" : 22,
+        "y" : 32,
         "width" : 3,
         "height" : 6
       }
@@ -1026,7 +1026,7 @@
       },
       "position" : {
         "x" : 3,
-        "y" : 22,
+        "y" : 32,
         "width" : 3,
         "height" : 6
       }
@@ -1259,7 +1259,7 @@
       },
       "position" : {
         "x" : 0,
-        "y" : 28,
+        "y" : 38,
         "width" : 6,
         "height" : 6
       }
@@ -1332,7 +1332,7 @@
       },
       "position" : {
         "x" : 0,
-        "y" : 1,
+        "y" : 11,
         "width" : 6,
         "height" : 6
       }
@@ -1407,12 +1407,16 @@
               "fieldName" : "alert_count",
               "displayName" : "alert_count"
             } ]
+          },
+          "frame" : {
+            "showTitle" : true,
+            "title" : "Real-Time Aircraft Component level Risk Distribution"
           }
         }
       },
       "position" : {
         "x" : 0,
-        "y" : 34,
+        "y" : 1,
         "width" : 6,
         "height" : 10
       }

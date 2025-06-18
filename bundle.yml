@@ -1,0 +1,13 @@
+name: aerodemo
+assets:
+  notebooks:
+    - path: 02_SyntheticData
+    - path: 03_WorkflowsAndPipelines
+    - path: 999_Misc
+  workflows:
+    - path: 03_WorkflowsAndPipelines/03_99_Setup_Workflow.ipynb
+    - path: 03_WorkflowsAndPipelines/03_999_Trigger Workflow.ipynb
+  pipelines:
+    - path: 03_WorkflowsAndPipelines/03_03_DLT_Pipeline_Full_Restored.py
+  config:
+    - path: config/aerodemo_config.py
