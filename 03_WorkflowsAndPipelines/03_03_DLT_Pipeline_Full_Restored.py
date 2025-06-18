@@ -951,7 +951,121 @@ def component_health_environmental_systems():
         )
     )
 
-# ✅ Step 23: Unified Component Health View (Updated with all 10 components)
+# ✅ Step 23: Component Feature Engineering Tables (New Components)
+
+# Electrical Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for electrical systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_electrical_systems():
+    df = dlt.read("component_health_electrical_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_battery_voltage", lag("battery_voltage", 1).over(lag_window))
+          .withColumn("prev_charge_level", lag("charge_level", 1).over(lag_window))
+          .withColumn("prev_power_efficiency", lag("power_distribution_efficiency", 1).over(lag_window))
+          .withColumn("avg_battery_voltage_7d", avg("battery_voltage").over(rolling))
+          .withColumn("avg_charge_level_7d", avg("charge_level").over(rolling))
+          .withColumn("avg_power_efficiency_7d", avg("power_distribution_efficiency").over(rolling))
+          .withColumn("avg_electrical_load_7d", avg("electrical_load").over(rolling))
+          .withColumn("avg_transformer_health_7d", avg("transformer_health").over(rolling))
+    )
+
+# Fuel Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for fuel systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_fuel_systems():
+    df = dlt.read("component_health_fuel_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_fuel_level", lag("fuel_level", 1).over(lag_window))
+          .withColumn("prev_fuel_pressure", lag("fuel_pressure", 1).over(lag_window))
+          .withColumn("prev_pump_health", lag("pump_health", 1).over(lag_window))
+          .withColumn("avg_fuel_level_7d", avg("fuel_level").over(rolling))
+          .withColumn("avg_fuel_pressure_7d", avg("fuel_pressure").over(rolling))
+          .withColumn("avg_pump_health_7d", avg("pump_health").over(rolling))
+          .withColumn("avg_fuel_flow_rate_7d", avg("fuel_flow_rate").over(rolling))
+          .withColumn("avg_tank_balance_7d", avg("tank_balance").over(rolling))
+    )
+
+# Hydraulic Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for hydraulic systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_hydraulic_systems():
+    df = dlt.read("component_health_hydraulic_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_hydraulic_pressure", lag("hydraulic_pressure", 1).over(lag_window))
+          .withColumn("prev_fluid_level", lag("fluid_level", 1).over(lag_window))
+          .withColumn("prev_pump_performance", lag("pump_performance", 1).over(lag_window))
+          .withColumn("avg_hydraulic_pressure_7d", avg("hydraulic_pressure").over(rolling))
+          .withColumn("avg_fluid_level_7d", avg("fluid_level").over(rolling))
+          .withColumn("avg_pump_performance_7d", avg("pump_performance").over(rolling))
+          .withColumn("avg_fluid_temperature_7d", avg("fluid_temperature").over(rolling))
+          .withColumn("avg_line_integrity_7d", avg("line_integrity").over(rolling))
+    )
+
+# Environmental Systems Feature Engineering
+@dlt.table(
+    comment="Engineered features for environmental systems components",
+    table_properties={
+        "pipelines.materialize": "true",
+        "delta.autoOptimize.optimizeWrite": "true",
+        "delta.autoOptimize.autoCompact": "true"
+    },
+    partition_cols=["aircraft_id"]
+)
+def component_features_environmental_systems():
+    df = dlt.read("component_health_environmental_systems")
+    
+    # Rolling windows for feature engineering
+    rolling = Window.partitionBy("aircraft_id").orderBy("event_timestamp").rowsBetween(-6, 0)
+    lag_window = Window.partitionBy("aircraft_id").orderBy("event_timestamp")
+    
+    return (
+        df.withColumn("prev_wind_speed", lag("wind_speed", 1).over(lag_window))
+          .withColumn("prev_atmospheric_pressure", lag("atmospheric_pressure", 1).over(lag_window))
+          .withColumn("prev_crosswind_impact", lag("crosswind_impact", 1).over(lag_window))
+          .withColumn("avg_wind_speed_7d", avg("wind_speed").over(rolling))
+          .withColumn("avg_atmospheric_pressure_7d", avg("atmospheric_pressure").over(rolling))
+          .withColumn("avg_crosswind_impact_7d", avg("crosswind_impact").over(rolling))
+          .withColumn("avg_external_temperature_7d", avg("external_temperature").over(rolling))
+          .withColumn("avg_humidity_7d", avg("humidity").over(rolling))
+    )
+
+# ✅ Step 24: Unified Component Health View (Updated with all 10 components)
 import dlt
 from pyspark.sql.functions import lit
 
