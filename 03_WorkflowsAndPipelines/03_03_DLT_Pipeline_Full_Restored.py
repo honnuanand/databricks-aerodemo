@@ -355,10 +355,10 @@ def component_twins_master():
         ("A320_101", "AVN_SYS", "Avionics", "Avionics Suite", "2023-01-01", "Rockwell", "Fusion"),
         ("A320_101", "CABIN_PRESS", "CabinPressurization", "Cabin Press System", "2022-08-25", "Collins", "CPC-9000"),
         ("A320_101", "FRAME", "Airframe", "Main Fuselage", "2020-07-01", "Airbus", "AF-Shell"),
-        ("A320_101", "EL_SYS", "ElectricalSystems", "Electrical Power System", "2022-03-15", "Safran", "EPS-2000"),
-        ("A320_101", "FUEL_SYS", "FuelSystems", "Fuel Management System", "2021-09-20", "Parker", "FMS-Pro"),
+        ("A320_101", "EL_SYS", "ElectricalSystems", "Electrical Power System", "2022-03-15", "Honeywell", "EP-2000"),
+        ("A320_101", "FUEL_SYS", "FuelSystems", "Fuel Management System", "2021-09-20", "Parker", "FMS-3000"),
         ("A320_101", "HYD_SYS", "HydraulicSystems", "Hydraulic Control System", "2022-01-10", "Eaton", "HCS-500"),
-        ("A320_101", "ENV_SYS", "EnvironmentalSystems", "Environmental Control", "2022-06-05", "Honeywell", "ECS-3000")
+        ("A320_101", "ENV_SYS", "EnvironmentalSystems", "Environmental Control", "2022-06-05", "Collins", "ECS-400")
     ], [
         "aircraft_id",
         "component_id",
@@ -1022,9 +1022,6 @@ def anomaly_alerts_component():
 import dlt
 from pyspark.sql.functions import col, count, when, current_timestamp
 
-import dlt
-from pyspark.sql.functions import col, count, when, current_timestamp
-
 @dlt.table(
     comment="Extended sanity check validation across sensor features, component-level twins, alerts, and location mappings",
     table_properties={
@@ -1077,6 +1074,38 @@ def post_dlt_sanity_check():
     ])
     airframe_count = airframe_df.agg(count("*").alias("airframe_row_count"))
 
+    # Electrical Systems
+    electrical_df = dlt.read("twin_electrical_systems")
+    electrical_nulls = electrical_df.select([
+        count(when(col(c).isNull(), c)).alias(f"electrical_{c}_nulls")
+        for c in electrical_df.columns
+    ])
+    electrical_count = electrical_df.agg(count("*").alias("electrical_row_count"))
+
+    # Fuel Systems
+    fuel_df = dlt.read("twin_fuel_systems")
+    fuel_nulls = fuel_df.select([
+        count(when(col(c).isNull(), c)).alias(f"fuel_{c}_nulls")
+        for c in fuel_df.columns
+    ])
+    fuel_count = fuel_df.agg(count("*").alias("fuel_row_count"))
+
+    # Hydraulic Systems
+    hydraulic_df = dlt.read("twin_hydraulic_systems")
+    hydraulic_nulls = hydraulic_df.select([
+        count(when(col(c).isNull(), c)).alias(f"hydraulic_{c}_nulls")
+        for c in hydraulic_df.columns
+    ])
+    hydraulic_count = hydraulic_df.agg(count("*").alias("hydraulic_row_count"))
+
+    # Environmental Systems
+    environmental_df = dlt.read("twin_environmental_systems")
+    environmental_nulls = environmental_df.select([
+        count(when(col(c).isNull(), c)).alias(f"environmental_{c}_nulls")
+        for c in environmental_df.columns
+    ])
+    environmental_count = environmental_df.agg(count("*").alias("environmental_row_count"))
+
     # Component Alerts
     component_alerts = dlt.read("anomaly_alerts_component") \
         .groupBy("health_status") \
@@ -1096,11 +1125,19 @@ def post_dlt_sanity_check():
                     .crossJoin(cabin_count)
                     .crossJoin(airframe_nulls)
                     .crossJoin(airframe_count)
+                    .crossJoin(electrical_nulls)
+                    .crossJoin(electrical_count)
+                    .crossJoin(fuel_nulls)
+                    .crossJoin(fuel_count)
+                    .crossJoin(hydraulic_nulls)
+                    .crossJoin(hydraulic_count)
+                    .crossJoin(environmental_nulls)
+                    .crossJoin(environmental_count)
                     .crossJoin(component_alerts)
                     .withColumn("check_time", current_timestamp())
     )
 
-    return result;
+    return result
 
 
 
