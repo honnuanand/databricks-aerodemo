@@ -1,4 +1,6 @@
-# %load_ext autoreload
+#!/usr/bin/env python3
+
+workflow_content = '''# %load_ext autoreload
 # %autoreload 2
 
 # 🚀 99_Setup_Workflow Notebook - Clean Version
@@ -250,3 +252,10 @@ The workflow has been successfully created with the following structure:
 7. **Final Summary** (depends on aircraft alerts)
 
 All component tasks use component-specific alert tables and the unified alerts DLT pipeline provides a consolidated view.
+'''
+
+# Write the content to the new workflow file
+with open('03_WorkflowsAndPipelines/03_99_Setup_Workflow_New.ipynb', 'w') as f:
+    f.write(workflow_content)
+
+print("✅ Workflow notebook content generated successfully!") 
